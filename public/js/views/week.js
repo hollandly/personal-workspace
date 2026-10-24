@@ -68,16 +68,31 @@ Views.week = {
         </div>
       </div>
 
-      <div class="grid grid-4" style="margin-bottom:16px">
-        <div class="kpi accent-blue"><div class="kpi-label">${U.icon('target', 14)}计划完成</div>
-          <div class="kpi-value">${doneN}/${goals.length}</div><div class="kpi-foot">目标完成率 ${pct}%</div></div>
-        <div class="kpi accent-green"><div class="kpi-label">${U.icon('check', 14)}完成事项</div>
-          <div class="kpi-value">${doneTodos.length + doneTasks.length}</div><div class="kpi-foot">待办 ${doneTodos.length} · 任务 ${doneTasks.length}</div></div>
-        <div class="kpi accent-orange"><div class="kpi-label">${U.icon('clock', 14)}专注时长</div>
+      <div class="grid grid-4 kpi-grid" style="margin-bottom:16px">
+        <div class="kpi accent-blue">
+          <div class="kpi-ico blue">${U.icon('target', 17)}</div>
+          <div class="kpi-label"><span class="ico">${U.icon('target', 14)}</span>计划完成</div>
+          <div class="kpi-value">${doneN}/${goals.length}</div>
+          <div class="kpi-foot">目标完成率 ${pct}%</div>
+        </div>
+        <div class="kpi accent-green">
+          <div class="kpi-ico green">${U.icon('checkSquare', 17)}</div>
+          <div class="kpi-label"><span class="ico">${U.icon('check', 14)}</span>完成事项</div>
+          <div class="kpi-value">${doneTodos.length + doneTasks.length}</div>
+          <div class="kpi-foot">待办 ${doneTodos.length} · 任务 ${doneTasks.length}</div>
+        </div>
+        <div class="kpi accent-orange">
+          <div class="kpi-ico orange">${U.icon('clock', 17)}</div>
+          <div class="kpi-label"><span class="ico">${U.icon('clock', 14)}</span>专注时长</div>
           <div class="kpi-value">${(focusMin / 60).toFixed(1)}<span style="font-size:15px;color:var(--text-faint)">h</span></div>
-          <div class="kpi-foot">${focusMin} 分钟</div></div>
-        <div class="kpi ${overdue ? 'accent-red' : ''}"><div class="kpi-label">${U.icon('alert', 14)}当前逾期</div>
-          <div class="kpi-value">${overdue}</div><div class="kpi-foot">${overdue ? '需要清理' : '没有积压'}</div></div>
+          <div class="kpi-foot">${focusMin} 分钟</div>
+        </div>
+        <div class="kpi ${overdue ? 'accent-red' : ''}">
+          <div class="kpi-ico ${overdue ? 'red' : 'teal'}">${U.icon('alert', 17)}</div>
+          <div class="kpi-label"><span class="ico">${U.icon('alert', 14)}</span>当前逾期</div>
+          <div class="kpi-value">${overdue}</div>
+          <div class="kpi-foot">${overdue ? '需要清理' : '没有积压'}</div>
+        </div>
       </div>
 
       <div class="grid grid-2">

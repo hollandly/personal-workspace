@@ -34,25 +34,65 @@ Views.dashboard = {
     const hour = new Date().getHours();
     const greet = hour < 6 ? '夜深了' : hour < 11 ? '早上好' : hour < 14 ? '中午好' : hour < 18 ? '下午好' : '晚上好';
 
+    // 今日完成度：已完成 / (已完成 + 今日待办)
+    const doneToday = db.todos.filter(t => t.done && t.completedAt === T).length
+      + db.tasks.filter(t => t.status === 'done' && t.completedAt && U.fmt(new Date(t.completedAt)) === T).length;
+    const totalToday = doneToday + todayList.length;
+    const pctToday = totalToday ? Math.round(doneToday / totalToday * 100) : 0;
+    const cheer = pctToday >= 100 ? '今天全部搞定，漂亮！'
+      : pctToday >= 60 ? '就快完成了，再加把劲'
+        : pctToday > 0 ? '已经开个好头，稳步推进'
+          : '新的一天，从第一件事开始';
+    const R = 27, C = 2 * Math.PI * R;
+
     root.innerHTML = `
-      <div class="grid grid-4" style="margin-bottom:18px">
+      <!-- 移动端专属：渐变 Hero 卡（桌面端由 CSS 隐藏） -->
+      <div class="mobile-hero">
+        <div class="mh-top">
+          <div class="mh-info">
+            <div class="mh-greet">${greet}，${db.profile.name || '我'}</div>
+            <div class="mh-date">${new Date().getMonth() + 1} 月 ${new Date().getDate()} 日 ${U.weekdayCN(T)}</div>
+            <div class="mh-cheer">${cheer}</div>
+          </div>
+          <div class="mh-ring">
+            <svg width="68" height="68" viewBox="0 0 68 68">
+              <circle cx="34" cy="34" r="${R}" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="7"/>
+              <circle cx="34" cy="34" r="${R}" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"
+                stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - pctToday / 100)).toFixed(1)}"
+                transform="rotate(-90 34 34)"/>
+            </svg>
+            <div class="mh-ring-txt">
+              <div class="mh-ring-num">${pctToday}%</div>
+              <div class="mh-ring-lbl">完成度</div>
+            </div>
+          </div>
+        </div>
+        <div class="mh-bar"><div style="width:${pctToday}%"></div></div>
+        <div class="mh-foot">已完成 <b>${doneToday}</b> 项 · 还有 <b>${todayList.length}</b> 项待办 · 今日专注 <b>${focusToday}</b> 分钟</div>
+      </div>
+
+      <div class="grid grid-4 kpi-grid" style="margin-bottom:14px">
         <div class="kpi accent-blue">
-          <div class="kpi-label">${U.icon('check', 14)}今日待办</div>
+          <div class="kpi-ico blue">${U.icon('checkSquare', 17)}</div>
+          <div class="kpi-label"><span class="ico">${U.icon('check', 14)}</span>今日待办</div>
           <div class="kpi-value">${todayList.length}</div>
           <div class="kpi-foot">含 ${overdue.length} 项逾期</div>
         </div>
         <div class="kpi ${overdue.length ? 'accent-red' : ''}">
-          <div class="kpi-label">${U.icon('alert', 14)}逾期未办</div>
+          <div class="kpi-ico ${overdue.length ? 'red' : 'teal'}">${U.icon('alert', 17)}</div>
+          <div class="kpi-label"><span class="ico">${U.icon('alert', 14)}</span>逾期未办</div>
           <div class="kpi-value">${overdue.length}</div>
           <div class="kpi-foot">${overdue.length ? '建议优先清理' : '节奏保持得不错'}</div>
         </div>
         <div class="kpi accent-purple">
-          <div class="kpi-label">${U.icon('folder', 14)}进行中项目</div>
+          <div class="kpi-ico purple">${U.icon('folder', 17)}</div>
+          <div class="kpi-label"><span class="ico">${U.icon('folder', 14)}</span>进行中项目</div>
           <div class="kpi-value">${activeProjs.length}</div>
           <div class="kpi-foot">共 ${db.projects.length} 个项目</div>
         </div>
         <div class="kpi accent-green">
-          <div class="kpi-label">${U.icon('trending', 14)}本月已完成</div>
+          <div class="kpi-ico green">${U.icon('trending', 17)}</div>
+          <div class="kpi-label"><span class="ico">${U.icon('trending', 14)}</span>本月已完成</div>
           <div class="kpi-value">${doneThisMonth}</div>
           <div class="kpi-foot">今日专注 ${focusToday} 分钟</div>
         </div>

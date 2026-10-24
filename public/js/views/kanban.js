@@ -65,7 +65,12 @@ Views.kanban = {
     }).join('');
 
     const total = tasks.length, dn = tasks.filter(t => t.status === 'done').length;
-    U.$('#kbStat', root).innerHTML = `共 ${total} 个任务 · 完成 ${dn} · ${total ? Math.round(dn / total * 100) : 0}%`;
+    const pct = total ? Math.round(dn / total * 100) : 0;
+    U.$('#kbStat', root).innerHTML = `
+      <div class="kb-prog">
+        <div class="kb-prog-bar"><div style="width:${pct}%;background:linear-gradient(90deg,#6f7bf9,#4f46e5)"></div></div>
+        <span class="kb-prog-txt">${pct}%</span>
+      </div>`;
 
     /* 事件 */
     U.$('#kbProj', root).addEventListener('change', e => { st.proj = e.target.value; App.render(); });

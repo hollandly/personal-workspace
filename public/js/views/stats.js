@@ -62,11 +62,11 @@ Views.stats = {
         </div>
       </div>
 
-      <div class="grid grid-4" style="margin-bottom:16px">
-        <div class="kpi accent-green"><div class="kpi-label">${U.icon('check', 14)}完成待办</div><div class="kpi-value">${todoDone.length}</div><div class="kpi-foot">本月新增 ${todoNew.length}</div></div>
-        <div class="kpi accent-blue"><div class="kpi-label">${U.icon('trending', 14)}完成率</div><div class="kpi-value">${rate}%</div><div class="kpi-foot">完成 / 新增</div></div>
-        <div class="kpi accent-purple"><div class="kpi-label">${U.icon('flag', 14)}完成任务</div><div class="kpi-value">${taskDone.length}</div><div class="kpi-foot">涉及 ${projDist.length} 个项目</div></div>
-        <div class="kpi accent-orange"><div class="kpi-label">${U.icon('clock', 14)}专注时长</div><div class="kpi-value">${(focusMin / 60).toFixed(1)}<span style="font-size:15px;font-weight:500;color:var(--text-faint)">h</span></div><div class="kpi-foot">${focusMin} 分钟</div></div>
+      <div class="grid grid-4 kpi-grid" style="margin-bottom:16px">
+        <div class="kpi accent-green"><div class="kpi-ico green">${U.icon('checkSquare', 17)}</div><div class="kpi-label"><span class="ico">${U.icon('check', 14)}</span>完成待办</div><div class="kpi-value">${todoDone.length}</div><div class="kpi-foot">本月新增 ${todoNew.length}</div></div>
+        <div class="kpi accent-blue"><div class="kpi-ico blue">${U.icon('trending', 17)}</div><div class="kpi-label"><span class="ico">${U.icon('trending', 14)}</span>完成率</div><div class="kpi-value">${rate}%</div><div class="kpi-foot">完成 / 新增</div></div>
+        <div class="kpi accent-purple"><div class="kpi-ico purple">${U.icon('flag', 17)}</div><div class="kpi-label"><span class="ico">${U.icon('flag', 14)}</span>完成任务</div><div class="kpi-value">${taskDone.length}</div><div class="kpi-foot">涉及 ${projDist.length} 个项目</div></div>
+        <div class="kpi accent-orange"><div class="kpi-ico orange">${U.icon('clock', 17)}</div><div class="kpi-label"><span class="ico">${U.icon('clock', 14)}</span>专注时长</div><div class="kpi-value">${(focusMin / 60).toFixed(1)}<span style="font-size:15px;font-weight:500;color:var(--text-faint)">h</span></div><div class="kpi-foot">${focusMin} 分钟</div></div>
       </div>
 
       <div class="card" style="margin-bottom:16px">
