@@ -75,7 +75,15 @@ const CSP = [
 
   /* 2. 压缩混淆 */
   const result = await minify(merged, {
-    compress: { passes: 2, drop_console: true, drop_debugger: true },
+    compress: { passes: 3, drop_console: true, drop_debugger: true },
+    // 只混淆变量名 / 函数名 / 参数名（toplevel），不混淆属性名。
+    //
+    // 不要开 mangle.properties：本项目大量使用运行时字符串动态取属性——
+    //   Views[route]、ICONS[name]、App.icons[route]、subs[route]
+    //   以及 el.dataset.icon / route / id / act / add / gid / tid / week / view / q / p / f / col …
+    // 属性名一改，这些地方全部失配，且是**静默故障**（图标变空白、看板拖不动、
+    // 标签页切换没反应），测试很难全量覆盖。另外白名单还得长期同步维护，
+    // 以后每加一个 data-* 钩子都可能踩坑。收益远小于风险，故不启用。
     mangle: { toplevel: true },
     format: { comments: false, ascii_only: false }
   });
