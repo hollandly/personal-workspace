@@ -45,26 +45,25 @@ cd dist && python3 -m http.server 8080
 
 ## 三、上线（随时随地用手机打开）
 
-### 方式一：GitHub Pages（推荐，免费 + 自带 HTTPS）
+### GitHub Pages（推荐，免费 + 自带 HTTPS）
+
+**前提**：仓库必须是**公开**的。GitHub Pages 免费版不支持私有仓库（私有仓库开 Pages 需要 GitHub Pro）。
 
 ```bash
 cd personal-workspace
-node build.js                  # 先构建出 dist/
-
-# 把 dist/ 单独推到 gh-pages 分支
-cd dist
-git init && git add -A && git commit -m "deploy"
-git branch -M gh-pages
-git remote add origin git@github.com:<你的用户名>/<仓库名>.git
-git push -f origin gh-pages
+./deploy-gh-pages.sh git@github.com:<你的用户名>/<仓库名>.git
 ```
 
-然后到仓库 **Settings → Pages → Source** 选 `gh-pages` 分支，根目录 `/`。
+脚本会自动构建 `dist/` 并强推到 `gh-pages` 分支，最后打印出访问链接。
+
+推送后**只需再做一次**：打开仓库 **Settings → Pages → Source**，选 `gh-pages` 分支、根目录 `/`，保存。
 几十秒后即可访问 `https://<用户名>.github.io/<仓库名>/`。
 
 手机打开这个网址 → 设一个口令 → 开始用。**加到主屏幕后跟 App 一样**。
 
-### 方式二：Cloudflare Pages / Vercel / Netlify
+> 之后每次改了代码，重跑一次 `deploy-gh-pages.sh` 就会更新线上内容。
+
+### Cloudflare Pages / Vercel / Netlify
 
 构建命令填 `node build.js`，输出目录填 `dist`，其余默认即可。
 
