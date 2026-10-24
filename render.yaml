@@ -1,0 +1,24 @@
+# Render 一键部署蓝图（Blueprint）
+# 用法：Render 控制台 → New → Blueprint → 选择本仓库 → Apply
+services:
+  - type: web
+    name: personal-workspace
+    runtime: node
+    plan: starter            # 需要持久化磁盘，最低档为 starter（免费档无磁盘，重启会丢数据）
+    region: singapore        # 新加坡，国内访问较快；可选 oregon / frankfurt
+    branch: main
+    buildCommand: ""         # 零依赖，无需构建
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: WS_DATA_DIR
+        value: /var/data
+      # 建议设置：部署后只有知道邀请码的人才能注册，防止陌生人占用你的站点
+      - key: WS_INVITE_CODE
+        sync: false
+    disk:
+      name: workspace-data
+      mountPath: /var/data
+      sizeGB: 1

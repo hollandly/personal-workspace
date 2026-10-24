@@ -51,21 +51,46 @@ personal-workspace/
 - 未登录也能正常使用，数据只存在当前浏览器（localStorage）
 - 改密码会踢掉其他设备的登录；注销账号会一并删除云端数据
 
-## 上线部署
+## 上线部署（随时随地用手机访问）
 
-### 方式一：WorkBuddy 发布应用（推荐）
+### ⚠️ 先说结论：GitHub Pages 不够用
 
-直接用客户端的「发布应用」入口发布本目录即可。服务已按要求监听 `PORT` 环境变量并绑定 `0.0.0.0`。
+**GitHub Pages 只能托管静态文件，跑不了 Node 后端**，所以推到 GitHub Pages 之后：
 
-发布时建议使用简短的链接前缀，例如：
+- ✅ 页面能打开，界面、待办、看板都能用
+- ❌ 没有账号系统，不能登录，也**不会同步**——数据只存在打开页面的那个浏览器里，换台设备就是空的
 
+要做到「在外面用手机登录，数据和家里电脑一致」，必须让 `server.js` 跑起来。推荐下面这套组合：**代码放 GitHub（版本管理）+ 部署到 Render / Fly.io / Zeabur（提供公网服务）**。
+
+### 方式一：GitHub → Render（最省事）
+
+1. 在 GitHub 新建一个空仓库（不要勾选 README / .gitignore）
+2. 在本目录执行：
+
+```bash
+git remote add origin git@github.com:<你的用户名>/<仓库名>.git
+git branch -M main
+git push -u origin main
 ```
-domainPrefix: workspace      →  https://workspace.<平台域名>
+
+3. 打开 [Render](https://render.com) → **New → Blueprint** → 选择刚推上去的仓库 → Apply
+   （仓库里已有 `render.yaml`，会自动带上端口、数据盘和健康检查配置）
+4. 部署完会得到一个 `https://personal-workspace-xxxx.onrender.com` 的链接，手机直接打开就能注册登录
+
+> 数据持久化：蓝图里申请了 1GB 磁盘挂到 `/var/data`，对应 starter 档位。
+> 免费档没有磁盘，实例重启后账号数据会丢，个人长期使用建议开 starter。
+
+### 方式二：GitHub → Fly.io
+
+```bash
+fly launch --no-deploy     # 按提示确认，会自动读取 fly.toml
+fly deploy                 # 部署
+fly apps open              # 打开链接
 ```
 
-> 注意：发布工具会复用该目录已记录的应用与链接，重复发布是覆盖更新，链接保持不变。
+配置里已声明 Tokyo 区域 + 1GB 持久化卷挂载到 `/data`。
 
-### 方式二：部署到自己的服务器
+### 方式三：部署到自己的服务器
 
 ```bash
 # 1. 上传目录（不需要 node_modules）
@@ -79,6 +104,7 @@ cd /opt/workspace && pm2 start server.js --name workspace
 # [Service]
 # Environment=PORT=3000
 # Environment=WS_DATA_DIR=/var/lib/workspace
+# Environment=WS_INVITE_CODE=你的邀请码
 # ExecStart=/usr/bin/node /opt/workspace/server.js
 # Restart=always
 ```
@@ -105,6 +131,22 @@ server {
 ```
 
 数据文件默认在项目 `data/db.json`，可用 `WS_DATA_DIR` 环境变量改到独立目录（便于备份和升级）。
+
+## 环境变量
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `PORT` | `3000` | 监听端口，部署平台会自动注入 |
+| `WS_DATA_DIR` | `./data` | 数据目录，部署时指向持久化卷 |
+| `WS_INVITE_CODE` | 空 | **建议设置**。设置后注册必须填对邀请码，避免陌生人注册占用你的站点 |
+
+## 临时公网访问（不部署也能试）
+
+在家里电脑上跑着服务时，用 Cloudflare Tunnel 可以临时拿到一个公网 https 链接，手机马上能用（电脑关机后失效）：
+
+```bash
+cloudflared tunnel --url http://127.0.0.1:3000
+```
 
 ## 安全与备份
 

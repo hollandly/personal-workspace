@@ -18,6 +18,9 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 const MAX_BODY = 6 * 1024 * 1024;   // 6MB
 const MAX_PAYLOAD = 4 * 1024 * 1024; // 单份数据 4MB
 
+/* 部署到公网后建议设置 WS_INVITE_CODE：设置后注册时必须填写邀请码，避免陌生人注册 */
+const INVITE_CODE = (process.env.WS_INVITE_CODE || '').trim();
+
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -98,7 +101,11 @@ const clientIp = req => (req.headers['x-forwarded-for'] || '').split(',')[0].tri
 /* ---------------- 接口 ---------------- */
 const routes = {
   /* 健康检查 */
-  'GET /api/health': async (req, res) => ok(res, { time: Date.now(), users: db.allUsers().length }),
+  'GET /api/health': async (req, res) => ok(res, {
+    time: Date.now(),
+    requireInvite: !!INVITE_CODE,
+    users: db.allUsers().length
+  }),
 
   /* 当前账号 */
   'GET /api/auth/me': async (req, res) => {
@@ -116,6 +123,11 @@ const routes = {
     if (!auth.validateEmail(email)) return fail(res, 400, '请输入有效的邮箱');
     const pwErr = auth.validatePassword(password);
     if (pwErr) return fail(res, 400, pwErr);
+    if (INVITE_CODE) {
+      const got = String(body.inviteCode || '').trim();
+      if (!got) return fail(res, 403, '本站点需要邀请码才能注册');
+      if (got.toLowerCase() !== INVITE_CODE.toLowerCase()) return fail(res, 403, '邀请码不正确');
+    }
     if (db.findUserByEmail(email)) return fail(res, 409, '该邮箱已注册，请直接登录');
 
     const { salt, hash } = auth.hashPassword(password);

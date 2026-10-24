@@ -50,6 +50,8 @@ const Sync = {
     const meta = Sync.loadMeta();
     Sync.lastSyncAt = meta.lastSyncAt || 0;
     if (meta.user) Sync.user = meta.user;
+    const h = await Sync.api('/api/health');
+    if (h.ok && h.data) Sync.requireInvite = !!h.data.requireInvite;
     const r = await Sync.api('/api/auth/me');
     if (r.ok && r.data && r.data.user) {
       Sync.user = r.data.user;
@@ -215,8 +217,8 @@ const Sync = {
     await Sync.pull({ first: true });
     return { ok: true };
   },
-  async register(email, password, name) {
-    const r = await Sync.api('/api/auth/register', { method: 'POST', body: JSON.stringify({ email, password, name }) });
+  async register(email, password, name, inviteCode) {
+    const r = await Sync.api('/api/auth/register', { method: 'POST', body: JSON.stringify({ email, password, name, inviteCode }) });
     if (!r.ok) return { error: r.error || '注册失败' };
     Sync.user = r.data.user;
     Sync.rev = 0;
@@ -302,6 +304,7 @@ const Sync = {
       U.field('邮箱', U.input('', { id: 'auEmail', type: 'email', placeholder: 'you@example.com' })),
       U.field('密码', U.input('', { id: 'auPwd', type: 'password', placeholder: isReg ? '至少 8 位' : '登录密码' })),
       isReg ? U.field('昵称', U.input('', { id: 'auName', placeholder: '怎么称呼你（可留空）' })) : null,
+      (isReg && Sync.requireInvite) ? U.field('邀请码', U.input('', { id: 'auInvite', placeholder: '站点所有者提供的邀请码' })) : null,
       U.el('div', { id: 'auErr', style: { color: 'var(--danger)', fontSize: '12.5px', minHeight: '18px' } }),
       U.el('div', {
         html: `<p style="font-size:12px;color:var(--text-faint);line-height:1.7;margin-top:4px">
@@ -318,11 +321,13 @@ const Sync = {
         const email = U.$('#auEmail', b).value.trim();
         const pwd = U.$('#auPwd', b).value;
         const name = isReg ? U.$('#auName', b).value.trim() : '';
+        const invite = isReg && U.$('#auInvite', b) ? U.$('#auInvite', b).value.trim() : '';
         const errBox = U.$('#auErr', b);
         if (!email || !pwd) { errBox.textContent = '请填写邮箱和密码'; return false; }
+        if (isReg && Sync.requireInvite && !invite) { errBox.textContent = '请填写邀请码'; return false; }
         const btn = U.$('#modalFoot .btn-primary');
         if (btn) { btn.disabled = true; btn.textContent = '处理中…'; }
-        const r = isReg ? await Sync.register(email, pwd, name) : await Sync.login(email, pwd);
+        const r = isReg ? await Sync.register(email, pwd, name, invite) : await Sync.login(email, pwd);
         if (r.error) {
           errBox.textContent = r.error;
           if (btn) { btn.disabled = false; btn.textContent = isReg ? '注册并同步' : '登录'; }
