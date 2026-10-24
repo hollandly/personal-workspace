@@ -18,24 +18,33 @@ const Store = {
     };
   },
 
+  /**
+   * 启动时只准备空白数据；真实数据在口令解锁后由 hydrate() 注入。
+   * 这样未解锁时内存中不保留任何业务数据。
+   */
   load() {
-    try {
-      const raw = localStorage.getItem(KEY);
-      Store.db = raw ? JSON.parse(raw) : Store.seed();
-    } catch (e) {
-      console.error(e);
-      Store.db = Store.seed();
-    }
-    // 兼容补齐（保证字段完整，但不覆盖已有数据）
-    Store.db = Object.assign(Store.blank(), Store.db);
-    ['todos', 'projects', 'tasks', 'goals', 'notes', 'logs', 'plans'].forEach(k => { if (!Array.isArray(Store.db[k])) Store.db[k] = []; });
+    Store.db = Store.blank();
+    return Store.db;
+  },
+
+  /** 解密后注入数据（补齐缺失字段） */
+  hydrate(db) {
+    Store.db = Object.assign(Store.blank(), db || {});
+    ['todos', 'projects', 'tasks', 'goals', 'notes', 'logs', 'plans'].forEach(k => {
+      if (!Array.isArray(Store.db[k])) Store.db[k] = [];
+    });
+    if (!Store.db.profile) Store.db.profile = { name: '我', theme: 'light' };
     return Store.db;
   },
 
   save() {
-    localStorage.setItem(KEY, JSON.stringify(Store.db));
-    // 已登录时标记待同步（延迟推送，避免频繁写云端）
-    if (typeof Sync !== 'undefined' && Sync && Sync.markDirty) Sync.markDirty();
+    // 已解锁且启用加密 → 加密写回；否则明文（降级模式）
+    if (typeof Vault !== 'undefined' && Vault && Vault.unlocked && !Vault.plainMode) {
+      Vault.scheduleSave();
+      return;
+    }
+    try { localStorage.setItem(KEY, JSON.stringify(Store.db)); }
+    catch (e) { U.toast('保存失败：浏览器存储空间不足'); }
   },
 
   reset() { Store.db = Store.blank(); Store.save(); },

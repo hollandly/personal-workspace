@@ -1,158 +1,181 @@
 # 个人工作台
 
 待办 · 周计划 · 项目 · 看板 · 日历 · 统计 · 目标 · 速记，一套自用的个人生产力工作台。
-支持账号登录与多设备同步，手机 / 电脑 / 平板都能用。
 
-## 快速开始
+**纯静态 + 零后端 + 数据本机加密**。部署成静态站点后，任何设备打开网址都能用；但你的数据**只存在打开页面的那个浏览器里，用口令加密后落盘，不经过任何服务器**。
 
-```bash
-cd personal-workspace
-npm start            # 等价于 node server.js
-# 打开 http://127.0.0.1:3000
-```
+---
 
-零依赖，无需 `npm install`（`package.json` 里没有任何运行时依赖）。
-
-## 目录结构
+## 一、它是什么结构
 
 ```
 personal-workspace/
-├── server.js            # HTTP 服务：静态托管 + 账号 + 数据同步 API
-├── lib/
-│   ├── db.js            # JSON 持久化（data/db.json）
-│   └── auth.js          # scrypt 密码哈希 + 会话
-├── public/              # 前端（原生 JS，无构建）
+├── public/              # 源码（原生 JS，无框架无构建即可直接跑）
 │   ├── index.html
 │   ├── styles.css
-│   └── js/              # utils / icons / store / sync / charts + views/*
-└── data/                # 运行时数据（已 gitignore，请定期备份）
+│   └── js/
+│       ├── utils.js     # 工具、日期、弹窗
+│       ├── icons.js     # SVG 图标
+│       ├── store.js     # 数据层（只经 Vault 落盘）
+│       ├── vault.js     # ★ 本地保险箱：AES-256-GCM 加密
+│       ├── charts.js    # 手写 SVG 图表
+│       ├── app.js       # 路由与全局
+│       └── views/       # 9 个页面
+├── build.js             # 构建：合并 + 压缩混淆 + 注入 CSP → dist/
+├── dist/                # ★ 构建产物，直接推 GitHub Pages 的就是它
+├── server.js + lib/     # 可选的自托管版（带账号与多设备同步），当前默认不用
+└── package.json         # 零运行时依赖
 ```
 
-## 功能
+## 二、本地预览
+
+```bash
+cd personal-workspace
+npm start          # node server.js，然后打开 http://127.0.0.1:3000
+```
+
+或者不启服务，直接构建后静态预览：
+
+```bash
+node build.js      # 产出 dist/
+cd dist && python3 -m http.server 8080
+```
+
+> ⚠️ 加密功能依赖浏览器的 Web Crypto API。通过 `http://` 非 localhost 访问时浏览器会禁用它，请用 `https://` 或 `localhost` 打开。
+
+## 三、上线（随时随地用手机打开）
+
+### 方式一：GitHub Pages（推荐，免费 + 自带 HTTPS）
+
+```bash
+cd personal-workspace
+node build.js                  # 先构建出 dist/
+
+# 把 dist/ 单独推到 gh-pages 分支
+cd dist
+git init && git add -A && git commit -m "deploy"
+git branch -M gh-pages
+git remote add origin git@github.com:<你的用户名>/<仓库名>.git
+git push -f origin gh-pages
+```
+
+然后到仓库 **Settings → Pages → Source** 选 `gh-pages` 分支，根目录 `/`。
+几十秒后即可访问 `https://<用户名>.github.io/<仓库名>/`。
+
+手机打开这个网址 → 设一个口令 → 开始用。**加到主屏幕后跟 App 一样**。
+
+### 方式二：Cloudflare Pages / Vercel / Netlify
+
+构建命令填 `node build.js`，输出目录填 `dist`，其余默认即可。
+
+### 方式三：自己的服务器
+
+```bash
+rsync -av dist/ user@server:/var/www/desk/
+```
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name desk.yourdomain.com;
+    ssl_certificate     /path/fullchain.pem;
+    ssl_certificate_key /path/privkey.pem;
+    root /var/www/desk;
+    location / { try_files $uri $uri/ /index.html; }
+}
+```
+
+> 国内服务器绑定域名需先完成 ICP 备案。
+
+## 四、加密机制（为什么数据出不去）
+
+| 环节 | 做法 |
+| --- | --- |
+| 加密算法 | AES-256-GCM（带完整性校验，密文被篡改会直接解密失败） |
+| 密钥来源 | 你的口令 → PBKDF2-SHA256，25 万次迭代派生 |
+| 密钥存放 | **只在内存里**，锁屏 / 关页面即销毁，从不写入 localStorage |
+| 落盘内容 | 只有 `{v, salt, iv, data, hint, updatedAt}`——`data` 是密文，`salt`/`iv` 是随机数 |
+| 未解锁时 | 内存里连一份明文数据都没有，页面也不渲染 |
+| 网络 | 代码里**没有任何** `fetch` / `XMLHttpRequest` / `WebSocket`；CSP 写死 `connect-src 'none'`，从浏览器策略层彻底禁止一切网络请求 |
+
+### 代码混淆
+
+`build.js` 会把 16 个源文件合并后用 Terser 压缩混淆（`mangle.toplevel`），变量名、函数名、属性路径全部打乱：
+
+```
+脚本 144.5 KB → 109.8 KB（压缩 24%）
+```
+
+「混淆」不等于「防破解」——前端代码在用户手里，理论上总归能被逆向。它的作用是**提高直接读懂、批量扒取的门槛**，真正保护数据的是上面的加密层：即使有人把整个 `app.js` 拿走，没有你的口令也解不开 localStorage 里的密文。
+
+### 你可以自己验证「数据不出本机」
+
+1. 打开页面，按 `F12` → **Network** 面板 → 刷新 → 除了 `index.html` / `app.js` / `styles.css` 三个文件，**不会有任何 XHR / Fetch 请求**
+2. **Console** 里输入 `fetch('https://example.com')` → 会被 CSP 拦下并报错（说明策略层已封死）
+3. **Application → Local Storage** 里只有 `pw-vault-v1`，值是一长串看不懂的密文，**搜不到任何中文待办内容**
+4. 断网后再刷新 → 功能完全正常，数据照样能读写
+
+## 五、功能
 
 | 模块 | 说明 |
 | --- | --- |
-| 今日概览 | 今日待办、逾期、项目进度、近 14 天趋势 |
+| 今日概览 | 今日待办、逾期提醒、项目进度、近 14 天趋势 |
 | 待办 | 6 种筛选视图 + 四象限 + 番茄钟（25 分钟自动记工时） |
-| 周计划 | 每周目标 + 模板一键套用 + 周五复盘 + 历史归档 + Markdown 导出 |
+| 周计划 | 每周目标 + 模板一键套用 + 周末复盘 + 历史归档 + Markdown 导出 |
 | 项目 | 卡片列表、详情页、任务与里程碑、进度自动计算 |
 | 看板 | 四列拖拽（待办 / 进行中 / 待验收 / 已完成），支持跨项目聚合 |
 | 日历 | 月历聚合待办、任务、项目节点 |
 | 统计分析 | 月度 KPI、趋势、分布、贡献热力图、项目健康度 |
 | 目标 OKR | 周期、指标、进度更新留痕 |
 | 速记 | 自动保存的轻量笔记 |
-| 数据与设置 | JSON 备份 / 恢复、CSV、周报月报、打印存 PDF、账户管理 |
+| 数据与设置 | 口令管理、自动锁定、JSON 备份 / 恢复、CSV、周报月报、打印存 PDF |
 
-## 账号与同步
+## 六、安全与备份
 
-- 邮箱 + 密码注册登录（密码用 scrypt 加盐哈希，永不明文存储）
-- 登录后数据每 4 秒防抖推送到服务端；切回页面 / 联网时自动拉取
-- 多设备冲突时提供**智能合并 / 以云端为准 / 以本机为准**三种选择
-- 未登录也能正常使用，数据只存在当前浏览器（localStorage）
-- 改密码会踢掉其他设备的登录；注销账号会一并删除云端数据
+### ⚠️ 三条必须知道的事
 
-## 上线部署（随时随地用手机访问）
+1. **口令无法找回。** 没有服务器、没有「忘记密码」邮件。口令丢了 = 数据永久解不开，只能清空重来。
+   → 建议设一个**你肯定不会忘**的口令，并在设置页填上口令提示（提示会明文存在本机）。
 
-### ⚠️ 先说结论：GitHub Pages 不够用
+2. **清浏览器数据 = 清应用数据。** 用无痕窗口、手动清除站点数据、换浏览器，数据都不会跟着走。
+   → 请定期 `数据与设置 → 导出备份` 保存 JSON，换设备时用「从备份导入」恢复。
 
-**GitHub Pages 只能托管静态文件，跑不了 Node 后端**，所以推到 GitHub Pages 之后：
+3. **加密只防「别人拿到你的设备/备份文件」，不防「设备本身已中毒」。**
+   如果电脑上有恶意软件能读内存，任何本地加密都拦不住。日常保持系统更新即可。
 
-- ✅ 页面能打开，界面、待办、看板都能用
-- ❌ 没有账号系统，不能登录，也**不会同步**——数据只存在打开页面的那个浏览器里，换台设备就是空的
+### 自动锁定
 
-要做到「在外面用手机登录，数据和家里电脑一致」，必须让 `server.js` 跑起来。推荐下面这套组合：**代码放 GitHub（版本管理）+ 部署到 Render / Fly.io / Zeabur（提供公网服务）**。
+`数据与设置` 里可设 5 / 15 / 30 / 60 / 120 分钟无操作自动锁定，默认 30 分钟；也可以关掉。
+切到后台标签页、关闭页面前会自动落盘加密，不用担心丢数据。
 
-### 方式一：GitHub → Render（最省事）
+### 备份建议
 
-1. 在 GitHub 新建一个空仓库（不要勾选 README / .gitignore）
-2. 在本目录执行：
+- **每周一次**：`数据与设置 → 导出备份` → 存到网盘 / 移动硬盘
+- 备份文件是**明文 JSON**（没加密），请存在你信得过的地方
+- 迁移新设备：新设备打开页面 → 设口令 → `从备份导入`
 
-```bash
-git remote add origin git@github.com:<你的用户名>/<仓库名>.git
-git branch -M main
-git push -u origin main
-```
+### 关于口令强度
 
-3. 打开 [Render](https://render.com) → **New → Blueprint** → 选择刚推上去的仓库 → Apply
-   （仓库里已有 `render.yaml`，会自动带上端口、数据盘和健康检查配置）
-4. 部署完会得到一个 `https://personal-workspace-xxxx.onrender.com` 的链接，手机直接打开就能注册登录
+密钥走 PBKDF2 25 万次迭代，暴力破解成本很高，但口令本身仍是唯一入口。
+建议 12 位以上、别和其他网站用同一个。
 
-> 数据持久化：蓝图里申请了 1GB 磁盘挂到 `/var/data`，对应 starter 档位。
-> 免费档没有磁盘，实例重启后账号数据会丢，个人长期使用建议开 starter。
+---
 
-### 方式二：GitHub → Fly.io
+## 附录：可选的自托管版（带账号同步）
+
+仓库里的 `server.js` + `lib/` 是一套完整的 Node 后端（邮箱密码注册、scrypt 哈希、会话、多设备同步与冲突合并）。
+当前**默认不使用**，仅保留代码以备日后需要「多设备自动同步」时启用：
 
 ```bash
-fly launch --no-deploy     # 按提示确认，会自动读取 fly.toml
-fly deploy                 # 部署
-fly apps open              # 打开链接
+npm start    # 打开 http://127.0.0.1:3000
 ```
 
-配置里已声明 Tokyo 区域 + 1GB 持久化卷挂载到 `/data`。
+部署到 Render / Fly.io 的配置（`render.yaml` / `fly.toml` / `Procfile`）也一并保留。
 
-### 方式三：部署到自己的服务器
-
-```bash
-# 1. 上传目录（不需要 node_modules）
-rsync -av --exclude data ./ user@server:/opt/workspace/
-
-# 2. 用 pm2 守护
-cd /opt/workspace && pm2 start server.js --name workspace
-
-# 或用 systemd
-# /etc/systemd/system/workspace.service
-# [Service]
-# Environment=PORT=3000
-# Environment=WS_DATA_DIR=/var/lib/workspace
-# Environment=WS_INVITE_CODE=你的邀请码
-# ExecStart=/usr/bin/node /opt/workspace/server.js
-# Restart=always
-```
-
-### 绑定自己的域名
-
-用 Nginx 反代并申请证书即可（国内服务器需先完成 ICP 备案）：
-
-```nginx
-server {
-    listen 443 ssl http2;
-    server_name desk.yourdomain.com;
-
-    ssl_certificate     /path/fullchain.pem;
-    ssl_certificate_key /path/privkey.pem;
-
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_set_header Host              $host;
-        proxy_set_header X-Forwarded-Proto $scheme;   # 必须：用于下发 Secure Cookie
-        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-    }
-}
-```
-
-数据文件默认在项目 `data/db.json`，可用 `WS_DATA_DIR` 环境变量改到独立目录（便于备份和升级）。
-
-## 环境变量
-
-| 变量 | 默认值 | 说明 |
+| 环境变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `PORT` | `3000` | 监听端口，部署平台会自动注入 |
-| `WS_DATA_DIR` | `./data` | 数据目录，部署时指向持久化卷 |
-| `WS_INVITE_CODE` | 空 | **建议设置**。设置后注册必须填对邀请码，避免陌生人注册占用你的站点 |
+| `PORT` | `3000` | 监听端口 |
+| `WS_DATA_DIR` | `./data` | 数据目录 |
+| `WS_INVITE_CODE` | 空 | 设置后注册必须填对邀请码，避免陌生人占用你的站点 |
 
-## 临时公网访问（不部署也能试）
-
-在家里电脑上跑着服务时，用 Cloudflare Tunnel 可以临时拿到一个公网 https 链接，手机马上能用（电脑关机后失效）：
-
-```bash
-cloudflared tunnel --url http://127.0.0.1:3000
-```
-
-## 安全与备份
-
-- 密码：scrypt（N=16384）加盐哈希，登录失败限流（同 IP + 邮箱 15 分钟内 8 次）
-- 会话：32 字节随机 token，HttpOnly + SameSite=Lax + HTTPS 环境下自动 Secure，7 天有效并滑动续期
-- 数据隔离：所有读写都绑定当前登录用户，用户之间互不可见
-- 备份：`数据设置 → 导出备份`，或直接复制 `data/db.json`
-
-> 提醒：账号数据存放在应用目录下，重装或迁移服务时请记得带走 `data/` 目录。
+> 注意：自托管版走的是服务端账号体系，与本 README 主体的「本机加密」模式是两条独立路线，二者的数据不互通。

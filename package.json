@@ -2,9 +2,10 @@
   "name": "personal-workspace",
   "version": "1.1.0",
   "private": true,
-  "description": "个人工作台：待办 / 项目 / 看板 / 日历 / 统计 / 周计划，支持账号同步与多设备访问",
+  "description": "个人工作台：待办 / 周计划 / 项目 / 看板 / 日历 / 统计 / 目标 / 速记。纯静态 + AES-256-GCM 本机加密，零后端零上传",
   "main": "server.js",
   "scripts": {
+    "build": "node build.js",
     "start": "node server.js",
     "dev": "node server.js"
   },

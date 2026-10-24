@@ -7,12 +7,20 @@ Views.settings = {
     const size = new Blob([JSON.stringify(db)]).size;
     root.innerHTML = `
       <div class="card" style="margin-bottom:16px">
-        <div class="card-head"><div class="card-title">账户与同步</div>
+        <div class="card-head"><div class="card-title">安全与隐私</div>
           <div class="card-desc" id="setSyncDesc"></div></div>
         <div class="setting-row">
-          <div><div class="setting-label" id="setAccLabel">未登录</div>
-            <div class="setting-desc" id="setAccDesc">登录后，待办、项目、周计划会在所有设备之间自动同步</div></div>
+          <div><div class="setting-label" id="setAccLabel">本机加密</div>
+            <div class="setting-desc" id="setAccDesc">数据用你的口令加密后只存在这台设备，不上传任何服务器</div></div>
           <div class="export-btns" id="setAccBtns"></div>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label">自动锁定</div>
+            <div class="setting-desc">无操作一段时间后自动锁定，需重新输入口令</div></div>
+          <select id="setIdle" class="filters" style="margin:0;height:32px">
+            ${[0, 5, 15, 30, 60, 120].map(m =>
+              `<option value="${m}" ${Vault.idleMinutes() === m ? 'selected' : ''}>${m === 0 ? '不自动锁定' : m + ' 分钟'}</option>`).join('')}
+          </select>
         </div>
       </div>
 
@@ -77,26 +85,30 @@ Views.settings = {
       </div>
     `;
 
-    /* 账户与同步 */
+    /* 安全与隐私 */
     const syncBox = U.$('#setAccBtns', root);
-    if (Sync.user) {
-      U.$('#setAccLabel', root).textContent = `已登录 · ${Sync.user.email}`;
-      U.$('#setAccDesc', root).textContent = `上次同步：${Sync.lastText()}`;
-      U.$('#setSyncDesc', root).textContent = Sync.state === 'ok' ? '同步正常' : (Sync.state === 'error' ? '有改动未同步' : '同步中…');
-      syncBox.appendChild(U.el('button.btn.btn-sm', { text: '立即同步', onclick: () => Sync.push({ force: true }) }));
-      syncBox.appendChild(U.el('button.btn.btn-sm', { text: '账户设置', onclick: () => Sync.accountDialog() }));
-      syncBox.appendChild(U.el('button.btn.btn-sm.btn-danger', {
-        text: '退出登录',
-        onclick: () => U.confirm('退出后本机数据仍会保留，但不再同步到其他设备。确定退出？', async () => {
-          await Sync.logout(); U.toast('已退出登录'); App.render();
-        })
+    if (Vault.plainMode) {
+      U.$('#setAccLabel', root).textContent = '未加密（明文保存）';
+      U.$('#setAccDesc', root).textContent = '当前环境不支持浏览器加密，数据以明文存在本机';
+      U.$('#setSyncDesc', root).textContent = '明文模式';
+      syncBox.appendChild(U.el('button.btn.btn-sm.btn-primary', {
+        text: '启用加密',
+        onclick: () => U.confirm('启用前建议先导出备份。继续？', () => { Vault.wipe(); Vault.renderLock('setup'); })
       }));
     } else {
-      U.$('#setAccLabel', root).textContent = '未登录 · 数据仅存本机';
-      U.$('#setSyncDesc', root).textContent = '本地模式';
-      syncBox.appendChild(U.el('button.btn.btn-sm.btn-primary', { text: '登录', onclick: () => Sync.authDialog('login') }));
-      syncBox.appendChild(U.el('button.btn.btn-sm', { text: '注册', onclick: () => Sync.authDialog('register') }));
+      U.$('#setAccLabel', root).textContent = '已启用 · AES-256-GCM 本机加密';
+      U.$('#setAccDesc', root).textContent = '密钥由你的口令派生，只存在内存中，锁屏即销毁；数据不上传任何服务器';
+      U.$('#setSyncDesc', root).textContent = '已加密';
+      syncBox.appendChild(U.el('button.btn.btn-sm', { text: '修改口令', onclick: () => Views.settings.changePasscode() }));
+      syncBox.appendChild(U.el('button.btn.btn-sm', {
+        text: '立即锁定',
+        onclick: async () => { await Vault.saveNow(); Vault.lock(); U.toast('已锁定'); location.reload(); }
+      }));
     }
+    U.$('#setIdle', root).addEventListener('change', e => {
+      Vault.setIdleMinutes(Number(e.target.value));
+      U.toast('自动锁定已设置为 ' + (e.target.value === '0' ? '不启用' : e.target.value + ' 分钟'));
+    });
 
     /* 个人信息 */
     const pbox = U.$('#setProfile', root);
@@ -142,13 +154,44 @@ Views.settings = {
     U.$('#setPrint', root).addEventListener('click', () => window.print());
     U.$('#setSeed', root).addEventListener('click', () => {
       U.confirm('将用示例数据覆盖当前全部内容，确定？', () => {
-        Store.replace(Store.seed()); U.toast('示例数据已载入'); App.render();
+        Store.hydrate(Store.seed()); Store.save(); U.toast('示例数据已载入'); App.render();
       });
     });
     U.$('#setClear', root).addEventListener('click', () => {
-      U.confirm('将清空全部数据且无法恢复，确定？建议先导出备份。', () => {
-        Store.reset(); U.toast('已清空'); App.render();
+      U.confirm('将清空本机全部数据且无法恢复，确定？建议先导出备份。', () => {
+        Vault.wipe(); U.toast('已清空');
+        Vault.renderLock('setup');
       });
+    });
+  },
+
+  changePasscode() {
+    const body = U.el('div', {}, [
+      U.field('当前口令', U.input('', { id: 'cpOld', type: 'password' })),
+      U.field('新口令（至少 8 位）', U.input('', { id: 'cpNew', type: 'password' })),
+      U.field('确认新口令', U.input('', { id: 'cpNew2', type: 'password' })),
+      U.field('口令提示（可选）', U.input(Vault.hint || '', { id: 'cpHint', maxlength: '60' })),
+      U.el('div', { id: 'cpErr', style: { color: 'var(--danger)', fontSize: '12.5px', minHeight: '18px' } }),
+      U.el('div', {
+        html: `<p style="font-size:12px;color:var(--text-faint);line-height:1.7">
+          修改口令会用新口令重新加密本机全部数据，不影响已有内容。</p>`
+      })
+    ]);
+    U.modal({
+      title: '修改口令', body,
+      okText: '确认修改',
+      onOk: async b => {
+        const err = U.$('#cpErr', b);
+        const oldP = U.$('#cpOld', b).value;
+        const newP = U.$('#cpNew', b).value;
+        const newP2 = U.$('#cpNew2', b).value;
+        if (newP.length < 8) { err.textContent = '新口令至少 8 位'; return false; }
+        if (newP !== newP2) { err.textContent = '两次输入的新口令不一致'; return false; }
+        const r = await Vault.changePassword(oldP, newP, U.$('#cpHint', b).value);
+        if (r.error) { err.textContent = r.error; return false; }
+        U.toast('口令已更新');
+        App.render();
+      }
     });
   }
 };

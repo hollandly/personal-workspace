@@ -10,23 +10,44 @@ const App = {
   async init() {
     Store.load();
     App.paintIcons();
-    App.setTheme(Store.db.profile.theme || 'light');
     App.bindNav();
     App.bindGlobal();
     window.addEventListener('hashchange', () => App.render());
     if (!location.hash) location.hash = '#/dashboard';
+    Vault.bindIdleEvents();
+    // 锁定：清空内存与页面残留数据，再显示锁屏
+    Vault.onLock = () => {
+      U.$('#view').innerHTML = '';
+      Store.db = Store.blank();
+      Vault.renderLock('unlock');
+    };
+    // 切到后台 / 关闭页面前尽量落盘
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && Vault.unlocked && !Vault.plainMode) Vault.saveNow();
+    });
+    // 未解锁前不渲染业务数据，先走锁屏
+    Vault.renderLock(Vault.isConfigured() ? 'unlock' : 'setup');
+  },
+
+  /** 解锁 / 创建口令完成后进入应用 */
+  afterUnlock() {
+    App.setTheme(Store.db.profile.theme || 'light');
     App.render();
-    // 账号与云端同步（失败不影响本地使用）
-    try {
-      const user = await Sync.init();
-      if (!user && !App.guestPrompted) {
-        App.guestPrompted = true;
-        setTimeout(() => {
-          if (!Sync.user) U.toast('当前为本地模式，登录后可在多设备间同步');
-        }, 1200);
-      }
-    } catch (e) {
-      Sync.setState('offline');
+    App.renderLockStatus();
+  },
+
+  /** 顶栏：安全状态 + 锁定按钮 */
+  renderLockStatus() {
+    const el = U.$('#syncBadge');
+    if (!el) return;
+    if (Vault.plainMode) {
+      el.className = 'sync-badge error';
+      el.innerHTML = `${U.icon('alert', 13)}<span class="sync-text">未加密</span>`;
+      el.title = '数据以明文保存在本机，建议通过 HTTPS 访问并启用口令加密';
+    } else {
+      el.className = 'sync-badge ok';
+      el.innerHTML = `${U.icon('check', 13)}<span class="sync-text">本机加密</span>`;
+      el.title = '数据用你的口令加密后保存在本机，不会上传到任何服务器';
     }
   },
 
@@ -56,6 +77,8 @@ const App = {
   },
 
   render(after) {
+    // 未解锁前不渲染任何页面（连空骨架也不渲染），避免锁屏背后留下界面痕迹
+    if (typeof Vault !== 'undefined' && Vault && !Vault.unlocked) return;
     const { route, param } = App.parse();
     const view = Views[route];
     const holder = U.$('#view');
@@ -118,7 +141,7 @@ const App = {
     const close = () => App.closeSidebar();
     U.$('#sidebarMask').addEventListener('click', close);
     U.$('#sidebarClose').addEventListener('click', close);
-    U.$('#mtAccount').addEventListener('click', () => Sync.accountDialog());
+    U.$('#mtAccount').addEventListener('click', () => { location.hash = '#/settings'; });
   },
 
   closeSidebar() {
@@ -133,12 +156,23 @@ const App = {
     });
     /* 快速添加 */
     U.$('#btnQuickAdd').addEventListener('click', () => Views.todos.edit(null));
-    /* 账户与同步 */
-    U.$('#btnAccount').addEventListener('click', () => Sync.accountDialog());
-    U.$('#syncBadge').addEventListener('click', () => {
-      if (!Sync.user) return Sync.authDialog('login');
-      Sync.push({ force: true });
+    /* 安全与锁定 */
+    U.$('#btnAccount').addEventListener('click', () => {
+      U.modal({
+        title: '安全与隐私',
+        body: U.el('div', {
+          html: `<div style="font-size:13.5px;line-height:1.85;color:var(--text-dim)">
+            · 全部数据（待办、项目、周计划、笔记）都用你的口令加密后存在<b style="color:var(--text)">这台设备的浏览器里</b><br>
+            · 没有服务器参与，任何数据都不会上传，也无法被远程找回<br>
+            · 口令只用于派生密钥，不会被保存；忘记口令只能清空本机数据重来<br>
+            · 换设备不会自动同步：请在「数据与设置」导出备份，再到新设备导入
+          </div>`
+        }),
+        okText: '知道了',
+        cancelText: ''
+      });
     });
+    U.$('#syncBadge').addEventListener('click', () => { location.hash = '#/settings'; });
     /* 模态框关闭 */
     U.$('#modalClose').addEventListener('click', U.closeModal);
     U.$('#modalMask').addEventListener('click', e => { if (e.target.id === 'modalMask') U.closeModal(); });

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#f4f5f8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>个人工作台</title>
+<link rel="stylesheet" href="styles.css">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'">
+</head>
+<body>
+<div id="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-logo">工</div>
+      <div class="brand-text">
+        <div class="brand-title">个人工作台</div>
+        <div class="brand-sub" id="brandSub">今天</div>
+      </div>
+      <button class="sidebar-close" id="sidebarClose"><span data-icon="x"></span></button>
+    </div>
+
+    <nav class="nav" id="nav">
+      <div class="nav-group">工作</div>
+      <a class="nav-item" data-route="dashboard"><span class="ico" data-icon="grid"></span>今日概览</a>
+      <a class="nav-item" data-route="todos"><span class="ico" data-icon="check"></span>待办<em class="nav-badge" id="badgeTodo"></em></a>
+      <a class="nav-item" data-route="week"><span class="ico" data-icon="plan"></span>周计划</a>
+      <a class="nav-item" data-route="projects"><span class="ico" data-icon="folder"></span>项目</a>
+      <a class="nav-item" data-route="kanban"><span class="ico" data-icon="columns"></span>看板</a>
+      <a class="nav-item" data-route="calendar"><span class="ico" data-icon="calendar"></span>日历</a>
+      <div class="nav-group">洞察</div>
+      <a class="nav-item" data-route="stats"><span class="ico" data-icon="chart"></span>统计分析</a>
+      <a class="nav-item" data-route="goals"><span class="ico" data-icon="target"></span>目标 OKR</a>
+      <div class="nav-group">沉淀</div>
+      <a class="nav-item" data-route="notes"><span class="ico" data-icon="note"></span>速记</a>
+      <a class="nav-item" data-route="settings"><span class="ico" data-icon="settings"></span>数据与设置</a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="focus-card" id="focusMini">
+        <div class="focus-ring">
+          <svg viewBox="0 0 36 36" width="34" height="34">
+            <circle cx="18" cy="18" r="15.5" fill="none" stroke="currentColor" stroke-width="2.5" opacity=".18"/>
+            <circle id="focusArc" cx="18" cy="18" r="15.5" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-dasharray="97.4" stroke-dashoffset="97.4" transform="rotate(-90 18 18)"/>
+          </svg>
+          <span class="focus-ico" id="focusIco"></span>
+        </div>
+        <div class="focus-info">
+          <div class="focus-time" id="focusTime">25:00</div>
+          <div class="focus-label" id="focusLabel">点击开始专注</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-mask" id="sidebarMask"></div>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-btn" id="btnMenu"><span data-icon="menu"></span></button>
+        <div class="page-ico" id="pageIco"></div>
+        <div class="page-title-wrap">
+          <h1 id="pageTitle">今日概览</h1>
+          <div class="topbar-sub" id="pageSub"></div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="search-box">
+          <span class="search-ico" id="searchIco"></span>
+          <input type="text" id="globalSearch" placeholder="搜索待办 / 项目 / 笔记…" autocomplete="off">
+          <kbd>⌘K</kbd>
+          <div class="search-result" id="searchResult"></div>
+        </div>
+        <div class="sync-badge" id="syncBadge"></div>
+        <button class="btn btn-primary" id="btnQuickAdd"><span class="btn-ico" data-icon="plus"></span><span class="btn-label">待办</span></button>
+        <button class="btn btn-ghost icon account-btn" id="btnAccount" title="账户与同步"><span data-icon="user"></span></button>
+        <button class="btn btn-ghost icon" id="btnTheme" title="切换主题"><span data-icon="moon"></span></button>
+      </div>
+    </header>
+    <div class="content" id="view"></div>
+  </main>
+
+  <nav class="mobile-tabs" id="mobileTabs">
+    <a class="mt-item" data-route="dashboard"><span data-icon="grid"></span>概览</a>
+    <a class="mt-item" data-route="todos"><span data-icon="check"></span>待办</a>
+    <a class="mt-item" data-route="week"><span data-icon="plan"></span>周计划</a>
+    <a class="mt-item" data-route="projects"><span data-icon="folder"></span>项目</a>
+    <a class="mt-item" id="mtAccount"><span data-icon="user"></span>我的</a>
+  </nav>
+</div>
+
+<div class="modal-mask" id="modalMask">
+  <div class="modal" id="modal">
+    <div class="modal-head">
+      <h3 id="modalTitle">标题</h3>
+      <button class="modal-close" id="modalClose"><span data-icon="x"></span></button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot" id="modalFoot"></div>
+  </div>
+</div>
+
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-card" id="lockCard"></div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

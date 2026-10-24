@@ -594,6 +594,46 @@ b, strong { font-weight: 600; }
   .card-head { flex-wrap: wrap; gap: 8px; }
 }
 
+/* ===== 锁屏 ===== */
+.lock-screen {
+  position: fixed; inset: 0; z-index: 300; display: none;
+  align-items: center; justify-content: center; padding: 20px;
+  background: linear-gradient(160deg, #eef0f7 0%, #f7f8fb 45%, #eef1f8 100%);
+}
+[data-theme="dark"] .lock-screen { background: linear-gradient(160deg, #14161c 0%, #1c2029 45%, #14161c 100%); }
+.lock-screen.show { display: flex; }
+.lock-card {
+  width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 18px; padding: 30px 28px 24px; box-shadow: var(--shadow-lg); text-align: center;
+  animation: lockIn .26s cubic-bezier(.2, .8, .3, 1);
+}
+@keyframes lockIn { from { transform: translateY(10px) scale(.98); opacity: 0; } to { transform: none; opacity: 1; } }
+.lock-logo {
+  width: 52px; height: 52px; margin: 0 auto 14px; border-radius: 15px; color: #fff;
+  display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 600;
+  background: linear-gradient(145deg, #635bff, #4f46e5 55%, #7c3aed);
+  box-shadow: 0 8px 22px -6px rgba(79, 70, 229, .5);
+}
+.lock-title { font-size: 18px; font-weight: 600; letter-spacing: -.3px; }
+.lock-sub { font-size: 12.5px; color: var(--text-faint); margin-top: 5px; line-height: 1.6; }
+.lock-warn {
+  margin-top: 12px; padding: 8px 12px; border-radius: var(--radius-sm);
+  background: var(--warn-soft); color: var(--warn); font-size: 12px;
+}
+.lock-card form { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+.lock-card input {
+  height: 42px; padding: 0 14px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface-2); outline: none; font-size: 14px; transition: .16s; text-align: center;
+}
+.lock-card input:focus { border-color: var(--primary); box-shadow: var(--ring); background: var(--surface); }
+.lock-btn { height: 42px; justify-content: center; font-size: 14px; border-radius: var(--radius-sm); }
+.lock-err { color: var(--danger); font-size: 12.5px; min-height: 18px; text-align: left; }
+.lock-link {
+  background: none; border: none; cursor: pointer; color: var(--text-faint);
+  font-size: 12px; padding: 4px; text-decoration: underline; text-underline-offset: 2px;
+}
+.lock-link:hover { color: var(--text-dim); }
+
 /* ===== 打印 ===== */
 @media print {
   .sidebar, .topbar-right, .modal-mask, .toast-wrap, .mobile-tabs, .menu-btn, .sidebar-mask { display: none !important; }
