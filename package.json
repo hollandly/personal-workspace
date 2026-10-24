@@ -1,0 +1,14 @@
+{
+  "name": "personal-workspace",
+  "version": "1.1.0",
+  "private": true,
+  "description": "个人工作台：待办 / 项目 / 看板 / 日历 / 统计 / 周计划，支持账号同步与多设备访问",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
