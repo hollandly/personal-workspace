@@ -790,6 +790,7 @@ b, strong { font-weight: 600; }
   font-size: 12px; padding: 4px; text-decoration: underline; text-underline-offset: 2px;
 }
 .lock-link:hover { color: var(--text-dim); }
+.lock-link.arm { color: var(--danger); font-weight: 600; text-decoration: none; }
 
 /* ===== 打印 ===== */
 @media print {

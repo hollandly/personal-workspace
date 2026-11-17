@@ -260,6 +260,7 @@ const Vault = {
         ${isSetup
         ? '<button type="button" class="lock-link" id="lkSkip">暂不加密，直接开始（数据明文保存）</button>'
         : '<button type="button" class="lock-link" id="lkForgot">忘记口令？清空本机数据重新设置</button>'}
+        ${isSetup ? '' : '<div class="lock-err" id="lkForgotTip"></div>'}
       </form>
     `;
 
@@ -302,14 +303,33 @@ const Vault = {
       });
     });
 
+    // 忘记口令：内联双段式确认，不依赖全局弹窗（避免被锁屏层遮挡 / 缓存旧样式等问题）
     const forgot = U.$('#lkForgot', card);
-    if (forgot) forgot.addEventListener('click', () => {
-      U.confirm('口令无法找回（数据只存在本机，没有服务器）。清空后将删除本机全部数据并重新设置，确定？', () => {
-        Vault.wipe();
-        U.toast('本机数据已清空');
-        Vault.renderLock('setup');
+    if (forgot) {
+      let armed = false;
+      let armTimer = null;
+      const tip = U.$('#lkForgotTip', card);
+      const disarm = () => {
+        armed = false;
+        clearTimeout(armTimer);
+        forgot.textContent = '忘记口令？清空本机数据重新设置';
+        forgot.classList.remove('arm');
+        if (tip) tip.textContent = '';
+      };
+      forgot.addEventListener('click', () => {
+        if (!armed) {
+          armed = true;
+          forgot.textContent = '再点一次，确认清空本机全部数据';
+          forgot.classList.add('arm');
+          if (tip) tip.textContent = '注意：本机数据将被永久删除，无法找回';
+          armTimer = setTimeout(disarm, 6000);
+        } else {
+          Vault.wipe();
+          U.toast('本机数据已清空');
+          Vault.renderLock('setup');
+        }
       });
-    });
+    }
   },
 
   closeLock() {

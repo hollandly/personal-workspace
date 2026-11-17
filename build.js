@@ -98,11 +98,15 @@ const CSP = [
   /* 3. 复制样式 */
   fs.copyFileSync(path.join(SRC, 'styles.css'), path.join(OUT, 'styles.css'));
 
-  /* 4. 生成 index.html：单个脚本 + CSP */
+  /* 4. 生成 index.html：单个脚本 + CSP + 资源版本号（防缓存） */
+  // 版本号取本次构建时间戳。浏览器看到 URL 里的 ?v= 变化就会重新下载，
+  // 避免 GitHub Pages 的 max-age=600 缓存导致「改了不生效」。
+  const VER = Date.now().toString(36);
   let html = fs.readFileSync(path.join(SRC, 'index.html'), 'utf8');
   html = html.replace(/<script src="js\/[^"]+"><\/script>\s*/g, '');
+  html = html.replace(/(href=")styles\.css(")/, `$1styles.css?v=${VER}$2`);
   html = html.replace('</head>', `  <meta http-equiv="Content-Security-Policy" content="${CSP}">\n</head>`);
-  html = html.replace('</body>', '  <script src="app.js"></script>\n</body>');
+  html = html.replace('</body>', `  <script src="app.js?v=${VER}"></script>\n</body>`);
   fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
 
   console.log('构建完成 → dist/');
